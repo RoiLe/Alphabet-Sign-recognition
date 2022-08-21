@@ -1,16 +1,62 @@
 import numpy as np
 import cv2
 import tensorflow as tf
+import handTrackingModule
+import time
 
 """
-    This func will load the model that we use. 
-    Convert the input image and predict. 
+    The video is begin. 
+    the main loop of the program will run from here. 
+
+"""
+def take_real_time_video():
+    pTime = 0
+    cTime = 0
+    cap = cv2.VideoCapture(0)
+    detector = handTrackingModule.handDetector()
+    prediction  = ''
+
+    #status = preproccess(input_folder, action = True)
+    status = False
+    #print("PreProcess is done")
+    # recognition is start.
+    if status == False:
+        while True:
+            success, img = cap.read()
+            hands = img
+            img = detector.findHands(img)
+            lm_list = detector.findPosition(img) #to recognize the hand if its in the frame.
+            cTime = time.time()
+            fps = 1 / (cTime - pTime) #frame per second
+            pTime = cTime
+
+            img = cv2.rectangle(img, (150,150), (350,350), (0,0,255), 2) 
+            
+            if len(lm_list) != 0 :
+                cropped_img = cropped_image(img)
+                cv2.imshow("cropped image", cropped_img)
+                prediction = modeling(cropped_img, prediction = False, result = False)
+  
+            
+            cv2.putText(img, str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 255), 3) 
+            cv2.putText(img, prediction, (100,100), cv2.FONT_HERSHEY_PLAIN, 4, (0, 255, 0),3) 
     
-    input: currenly image
-    output: predicted letter
+    
+            cv2.imshow("Image", img)
+            cv2.waitKey(1)
+        
+        ### END OF WHILE LOOP ### 
+    cv2.destroyAllWindows()
+
+
+
+
+"""
+    convert the image as the correct place and returns only the hand. 
+
 """
 def modeling(test_image, prediction = True, result = True):             
-    model = tf.keras.models.load_model('demo_cnn_model.h5')             # load model.
+    model = tf.keras.models.load_model('demo_cnn_model.h5')                  # load model.
     cv2.imwrite('img.jpg', test_image)                                  # resize for the model size.
     image = tf.keras.utils.load_img('img.jpg', target_size = (64, 64))
     test_image = tf.image.resize(image,[64, 64])
@@ -30,9 +76,9 @@ def result_to_letter(result):
     letter_position = 0
     letters_dict = {'A': 0,
                     'B': 1,
-                    'C': 2
-                   }
-
+                    'C': 2}
+ 
+                 
     for i in result[0]:   
         if i != 0:
             position = list(letters_dict.values()).index(letter_position)
@@ -47,3 +93,4 @@ def cropped_image(img):
     # Cropping an image
     cropped_image = img[152:348, 152:348]
     return cropped_image
+
